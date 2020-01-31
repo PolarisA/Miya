@@ -26,6 +26,7 @@ import {
   Home,
   Mine,
   Dynamic,
+  DynamicList
 } from '@screens'
 
 import {
@@ -65,9 +66,9 @@ const MainTab = createBottomTabNavigator({
   lazy: true,
   backBehavior: 'none',
   tabBarOptions: {
-    activeTintColor: 'rgb(22,131,251)',
+    activeTintColor: '#722ed1',
     inactiveTintColor: '#959595',
-    pressColor: 'rgb(22,131,251)',
+    pressColor: '#722ed1',
     style: {
       backgroundColor: '#ffffff',
       height: autoWidth(48),
@@ -97,9 +98,12 @@ const TabBarIcon = ({ routeName, tintColor }) => {
   )
 }
 
+const RootScreen = (Screen) => props => <Screen {...props} {...{ rootScreen: true }} />
+
 const AppStack = createStackNavigator({
   Home: MainTab,
-  Dynamic,
+  Dynamic: RootScreen(Dynamic),
+  DynamicList: DynamicList,
 }, {
   initialRouteName: 'Home',
   headerMode: "none",

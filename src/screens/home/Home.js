@@ -4,6 +4,11 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
+
+import {
+  api,
+} from '@common'
+
 import {
   styles,
 } from './Home.style';
@@ -14,7 +19,8 @@ class Home extends Component {
     this.state = {};
   }
 
-  _onPush = () => {
+  _onPush() {
+    console.log('====== _onPush props >>> ', this.props)
     const { navigation } = this.props
     navigation.push('Dynamic')
   }
@@ -27,7 +33,7 @@ class Home extends Component {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.homeBtnView}
-          onPress={this._onPush}>
+          onPress={() => this._onPush()}>
           <Text>{'home'}</Text>
         </TouchableOpacity>
       </View>
