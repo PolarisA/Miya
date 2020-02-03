@@ -22,7 +22,8 @@ class Home extends Component {
   _onPush() {
     console.log('====== _onPush props >>> ', this.props)
     const { navigation } = this.props
-    navigation.push('Dynamic')
+    // navigation.push('Dynamic')
+    navigation.push('DynamicList')
   }
 
   render() {

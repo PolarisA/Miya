@@ -6,7 +6,6 @@ import {
 } from 'react-native';
 
 import {
-  Header,
   WithScreen
 } from '@container'
 
@@ -14,10 +13,7 @@ import {
   styles,
 } from './Dynamic.style';
 
-@WithScreen('动态', {
-  statusBarProps: {
-    translucent: true,
-  },
+@WithScreen('Dynamic', {
   showHeader: true,
 })
 class Dynamic extends Component {

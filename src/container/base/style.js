@@ -21,5 +21,8 @@ const styles = StyleSheet.create({
 })
 
 export {
-  styles
+  styles,
+  width,
+  height,
+  ios,
 }
