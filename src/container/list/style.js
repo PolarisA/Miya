@@ -43,6 +43,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  indicatorContainer: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  indicator: {
+    color: '#DCDCDC',
+    margin: 15
+  }
 })
 
 export {

@@ -112,8 +112,6 @@ class Header extends Component<Props> {
   }
 
   render() {
-    console.log('==== header props >>>>', this.props)
-
     const {
       style,
       leftTitle,

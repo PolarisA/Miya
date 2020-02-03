@@ -1,21 +1,38 @@
+/**
+ * @Author : HuiWen
+ * @Date : 2019-12-02
+ * @Description :
+ * 百思不得姐 接口缘故 下一页的np由当前的数据返回可得
+ * 所以没有pageNo 和 pageSize
+ **/
 import React, { Component, ReactElement } from 'react';
 import {
   View,
   Text,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Image,
   TouchableOpacity,
-  Dimensions,
+  ActivityIndicator
 } from 'react-native';
 
-import { image } from '@common'
+import {
+  image
+} from '@common'
+
+import {
+  LoadingView
+} from '@container'
+
 import {
   styles,
 } from './style'
 
 const {
-  icEmpty
+  icon: {
+    icEmpty
+  },
 } = image
 
 const EmptyComponent = ({ content, onReload }) => (
@@ -37,8 +54,6 @@ const EmptyComponent = ({ content, onReload }) => (
   </View>
 );
 
-const { width, height } = Dimensions.get('window');
-
 type Column = {
   index: number,
   data: Array<any>,
@@ -49,16 +64,14 @@ export type Props = {
   api?: ?any,
   numColumns: number,
   renderItem: ({ item: any, index: number, column: number }) => ?ReactElement<any, >,
-  ListRenderFooter?: ?(React.ComponentType<any> | React.ReactElement<any>),
+  ListEmptyComponent?: ?(React.ComponentType<any> | React.ReactElement<any>),
   ListRenderHeader?: ?(React.ComponentType<any> | React.ReactElement<any>),
   style?: StyleSheet.ViewStyleProp | any,
   keyExtractor?: (item: any, index: number) => string,
-  onEndReached?: ?(info: { distanceFromEnd: number }) => void,
   contentContainerStyle?: any,
   onScroll?: (event: Object) => void,
-  refreshing?: ?boolean,
+  scrollToTop?: ?boolean,
   renderScrollComponent: (props: Object) => React.ReactElement<any>,
-  onRefresh?: ?Function,
 }
 
 type State = {
@@ -68,6 +81,7 @@ type State = {
 class List extends Component<Props, State> {
   static defaultProps = {
     numColumns: 1,
+    data: []
   };
 
   constructor(props) {
@@ -77,11 +91,11 @@ class List extends Component<Props, State> {
     } = props;
 
     this.state = {
-      pageNo: 1,
-      pageSize: 20,
-      refreshing: false,
-      loadMore: false,
+      isRefresh: false,
+      canLoadMore: true,
+      isLoading: false,
       data,
+      np: 0,
     };
   }
 
@@ -91,18 +105,124 @@ class List extends Component<Props, State> {
     this.handleRefresh();
   }
 
-  componentWillReceiveProps(nextProps: Props) {
-    if (nextProps && nextProps.data !== this.props.data) {
+  handleRefresh() {
+    this.stateRefreshing(() => {
+      this.request();
+    });
+  }
+
+  stateRefreshing(callback) {
+    this.setState({
+      isRefresh: true,
+      isLoading: true,
+      canLoadMore: false,
+    }, () => {
+      callback && callback();
+    });
+  }
+
+  async request() {
+    const { api } = this.props;
+    if (!api) {
+      return this.stateInitial();
+    }
+
+    const { info, list } = await api({ np: 0 });
+    // console.log('======== List res >>>>>', info);
+    let _success = info && info.np !== 0
+    if (!_success)
+      return
+
+    const { np } = info
+    let timer = setTimeout(() => {
+      clearTimeout(timer)
       this.setState({
-        data: nextProps.data,
-      });
+        isRefresh: false,
+        isLoading: false,
+        np,
+        data: list,
+      })
+    }, 2000)
+  }
+
+  stateInitial(callback) {
+    this.setState({
+      isRefresh: false,
+      canLoadMore: false,
+      isLoading: false,
+    }, () => {
+      callback && callback();
+    });
+  }
+
+  _onRefreshData(refreshing) {
+    if (refreshing) {
+      this.setState({
+        isRefresh: true,
+        np: 0,
+      }, () => this._onRefresh())
     }
   }
 
-  _onReload = () => {
-    const { onReload } = this.props;
-    onReload && onReload();
-  };
+  async _onRefresh() {
+    const { api } = this.props
+    const { info, list } = await api({ np: this.state.np })
+    // console.log('======== List res >>>>>', info);
+    let _success = info && info.np !== 0
+    if (!_success)
+      return
+
+    const { np } = info
+    let timer = setTimeout(() => {
+      clearTimeout(timer)
+      this.setState({
+        isRefresh: false,
+        isLoading: false,
+        np,
+        data: list,
+      })
+    }, 2000)
+  }
+
+  _onLoadMore() {
+    const { np } = this.state
+
+    if (!np) {
+      let timer = setTimeout(() => {
+        clearTimeout(timer)
+        this.setState({
+          canLoadMore: false,
+        })
+      }, 1200)
+    }
+    this.setState({
+      canLoadMore: true,
+    }, () => this._onLoadMoreData())
+  }
+
+  async _onLoadMoreData() {
+    const { api } = this.props
+    const { data, np } = this.state
+
+    const { info, list } = await api({ np })
+    let _success = info && info.np !== 0
+    if (!_success)
+      return
+
+    let _list = [].concat(data)
+    for (let i = 0; i < list.length; i++) {
+      _list.push(list[i])
+    }
+
+    let timer = setTimeout(() => {
+      clearTimeout(timer)
+      this.setState({
+        data: _list,
+        np: info.np,
+        canLoadMore: false,
+      })
+    }, 500)
+  }
 
   _renderDefaultHeader() {
     const { ListRenderHeader } = this.props;
@@ -116,81 +236,44 @@ class List extends Component<Props, State> {
     );
   }
 
-  _renderDefaultFooter() {
-    const { ListRenderFooter } = this.props;
-    if (ListRenderFooter) {
-      return (
-        <ListRenderFooter/>
-      );
-    }
+  _genIndicator() {
+    const { canLoadMore } = this.state
+
     return (
-      <View style={{ width, marginBottom: 20 }}/>
-    );
+      <View style={styles.indicatorContainer}>
+        {
+          canLoadMore ?
+            <ActivityIndicator
+              style={styles.indicator}
+              size={'small'}
+              animating={true}
+            /> : null
+        }
+      </View>
+    )
   }
 
-  handleRefresh() {
-    const { refreshing } = this.props;
-    if (refreshing) {
-      return;
+  _onScroll = event => {
+    if (this.props.onScroll) {
+      this.props.onScroll(event);
     }
+  };
 
-    this.stateRefreshing(() => {
-      this.request();
-    });
-  }
-
-  stateInitial(callback) {
-    this.setState({
-      refreshing: false,
-      loadMore: false,
-    }, () => {
-      callback && callback();
-    });
-  }
-
-  stateRefreshing(callback) {
-    this.setState({
-      refreshing: true,
-      loadMore: false,
-      pageNo: 1,
-    }, () => {
-      callback && callback();
-    });
-  }
-
-  async request() {
-    const { pageNo, pageSize } = this.state;
-    const {
-      api,
-      param,
-    } = this.props;
-
-    if (!api) {
-      return this.stateInitial();
+  _onLayout = event => {
+    if (this.props.onLayout) {
+      this.props.onLayout(event)
     }
-
-    let requestParams = {
-      pageNo,
-      pageSize,
-      ...param,
-    };
-
-    const res = await api(requestParams);
-    console.log('======== List res >>>>>', res);
-
-  }
+  };
 
   render() {
-    console.log('===== list props >>>>', this.props);
-    const { data } = this.state;
+    // console.log('===== list props >>>>', this.props);
+    // console.log('====== list state >>>>', this.state)
+    const { data, isRefresh, isLoading } = this.state;
     const {
       style,
-      ListRenderFooter,
       ListRenderHeader,
-      ListRenderEmpty,
       numColumns,
       renderItem,
-      onEndReached,
       keyExtractor,
       ...props
     } = this.props;
@@ -206,21 +289,37 @@ class List extends Component<Props, State> {
           contentContainerStyle={{ flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item, i }) => renderItem({ item, i })}
-          onEndReached={onEndReached}
-          ListFooterComponent={() => this._renderDefaultFooter()}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefresh}
+              onRefresh={() => {
+                this._onRefreshData(true)
+              }}
+            />
+          }
+          ListFooterComponent={() => this._genIndicator()}
           ListHeaderComponent={() => this._renderDefaultHeader()}
           ListEmptyComponent={() => {
             return <EmptyComponent
               content={''}
-              onReload={this._onReload}
+              onReload={() => {
+                this.handleRefresh()
+              }}
             />;
           }}
+          onEndReached={() => this._onLoadMore()}
           keyExtractor={keyExtractor}
+          onScroll={(e) => this._onScroll(e)}
+          onLayout={(e) => this._onLayout(e)}
         />
       </View>
     );
 
-    return content;
+    if (isLoading) {
+      return <LoadingView/>
+    }
+
+    return content
   }
 }
 
